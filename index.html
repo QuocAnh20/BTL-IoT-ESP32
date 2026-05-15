@@ -95,24 +95,25 @@
     <div class="main-layout">
         <div class="charts-column">
             <div class="chart-container"><canvas id="chart-temp"></canvas></div>
-    <div class="chart-container"><canvas id="chart-hum"></canvas></div>
+<div class="chart-container"><canvas id="chart-hum"></canvas></div>
             <div class="chart-container"><canvas id="chart-gas"></canvas></div>
         </div>
 
-    <div class="control-column">
-        <div id="clock-wrapper" style="background: var(--card-bg); padding: 15px 20px; border-radius: 15px; border: 1px solid var(--border); text-align: center; margin-bottom: 0px; display: flex; align-items: center; gap: 15px;">
-            <div style="width: 28px; height: 28px; background: #334155; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #475569;">
+        <div class="control-column">
+    <div id="clock-wrapper" style="background: var(--card-bg); padding: 15px 20px; border-radius: 15px; border: 1px solid var(--border); text-align: center; margin-bottom: 0px; display: flex; align-items: center; gap: 15px;">
+        <div style="width: 28px; height: 28px; background: #334155; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #475569;">
             <div style="width: 22px; height: 22px; background: #94a3b8; border-radius: 50%; position: relative;">
-            <div style="position: absolute; width: 2px; height: 7px; background: #ef4444; top: 4px; left: 10px;"></div>
-            <div style="position: absolute; width: 6px; height: 2px; background: #1e293b; top: 10px; left: 10px;"></div>
+                <div style="position: absolute; width: 2px; height: 7px; background: #ef4444; top: 4px; left: 10px;"></div>
+                <div style="position: absolute; width: 6px; height: 2px; background: #1e293b; top: 10px; left: 10px;"></div>
+            </div>
         </div>
-    </div>
+        
         <div style="color: #34d399;
     		font-size: 1.4rem;
-   		    border-radius: 12px; 
+   		border-radius: 12px; 
     		font-weight: 800; 
     		text-align: center;
-   		    text-transform: uppercase;
+   		text-transform: uppercase;
     		letter-spacing: 1px;">
             THỜI GIAN: <span id="digital-clock">00:00:00</span>
         </div>
@@ -123,10 +124,10 @@
             <span>Nhiệt độ:</span>
             <b id="val-temp" style="color: var(--temp); font-size: 1.5rem;">--°C</b>
         </div>
-	    <div class="mini-stat">
-            <span>Độ ẩm:</span>
-            <b id="val-hum" style="color: #2ed573; font-size: 1.5rem;">--%</b>
-        </div>
+	<div class="mini-stat">
+        <span>Độ ẩm:</span>
+        <b id="val-hum" style="color: #2ed573; font-size: 1.5rem;">--%</b>
+    </div>
         <div class="mini-stat">
             <span>Khí Gas:</span>
             <b id="val-gas" style="color: var(--primary); font-size: 1.5rem;">--</b>
@@ -145,8 +146,9 @@
         runClock();
     </script>
 
-    <div id="main-status">ĐANG KẾT NỐI...</div>
-    <div class="stat-card" style="background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; text-align: center;">
+            <div id="main-status">ĐANG KẾT NỐI...</div>
+
+            <div class="stat-card" style="background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; text-align: center;">
     <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px; font-weight: bold;">CHẾ ĐỘ HỆ THỐNG ĐIỀU KHIỂN</div>
     
     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
@@ -163,7 +165,7 @@
         </button>
     </div>
 
-    <div id="box-fan" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; opacity: 0.3; pointer-events: none; transition: 0.3s;">
+   <div id="box-fan" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; opacity: 0.3; pointer-events: none; transition: 0.3s;">
     <span style="font-size: 0.9rem; font-weight: bold;">ĐIỀU KHIỂN QUẠT:</span>
     <div style="display: flex; gap: 8px;">
         <button id="fan-on" onclick="sendControl('FAN_ON')" 
@@ -189,12 +191,13 @@
     <h1 style="text-align: center; color: #10b981; margin-bottom: 10px; font-size: 1.1rem;">
         <i class="fas fa-file-csv"></i> QUẢN LÝ DỮ LIỆU
     </h1>
-        </p>
-            <button onclick="exportToCSV()" 
-                style="background: #10b981; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;">
-                <span>📥 TẢI XUỐNG BẢN GHI (CSV)</span>
-            </button>
-            </div>        
+    </p>
+    <button onclick="exportToCSV()" 
+        style="background: #10b981; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;">
+        <span>📥 TẢI XUỐNG BẢN GHI (CSV)</span>
+    </button>
+</div>        
+
         </div>
     </div>
 </div>
@@ -210,6 +213,7 @@
     };
 
     let statusHistory = [];
+    let modeHistory = [];
     const client = new Paho.MQTT.Client(CONFIG.host, Number(CONFIG.port), "Web_Client_" + Math.random().toString(16).substr(2, 4));
 
     function sendControl(command) {
@@ -255,7 +259,7 @@
 
     const charts = {
         temp: createChart('chart-temp', 'Biểu đồ giá trị Nhiệt độ (°C)', '#ff4757', 0, 50),
-	    hum: createChart('chart-hum', 'Biểu đồ giá trị Độ ẩm (%)', '#2ed573', 0, 100),
+	hum: createChart('chart-hum', 'Biểu đồ giá trị Độ ẩm (%)', '#2ed573', 0, 100),
         gas: createChart('chart-gas', 'Biểu đồ giá trị Khí Gas (ADC)', '#00d4ff', 0, 4095)
     };
 
@@ -278,7 +282,7 @@
                 document.getElementById('val-temp').innerText = data["Nhiet do"] + "°C";
                 updateUI(charts.temp, time, data["Nhiet do"]);
             }
-	        if(data["Do am"] !== undefined) { // Thay "Do am" bằng key thực tế từ thiết bị của bạn
+	    if(data["Do am"] !== undefined) { // Thay "Do am" bằng key thực tế từ thiết bị của bạn
                document.getElementById('val-hum').innerText = data["Do am"] + "%";
                updateUI(charts.hum, time, data["Do am"]);
             }
@@ -288,34 +292,43 @@
             }
 
             const statusBox = document.getElementById('main-status');
-            if (data.Mode !== undefined) {
-            if (data.Mode === "TỰ ĐỘNG") {
-                // ĐỔI TRẠNG THÁI SANG TỰ ĐỘNG
-                // Cập nhật màu sắc nút bấm
-                btnAuto.style.backgroundColor = "#22c55e"; // Xanh lá
-                btnAuto.style.color = "white";
-                btnManual.style.backgroundColor = "#334155"; // Màu tối (off)
-                btnManual.style.color = "#94a3b8";
+            if(data["State"]) {
+                statusBox.innerText = "TRẠNG THÁI HỆ THỐNG:  " + data["State"];
+		        statusHistory.push(data["State"]);
+                const isSafe = (data["State"] === "SAFE" || data["State"] === "AN TOÀN");
+                statusBox.style.borderColor = isSafe ? "#34d399" : "#f87171";
+                statusBox.style.color = isSafe ? "#34d399" : "#f87171";
+            }
+            if(data["Mode"] !== undefined) {
+            const currentMode = data["Mode"];
+            modeHistory.push(currentMode); // Lưu vào lịch sử để xuất Excel
 
-                // Khóa khả năng bấm các nút điều khiển trực tiếp (vì đang chạy tự động)
-                if(fanBox) { fanBox.style.opacity = "0.4"; fanBox.style.pointerEvents = "none"; }
-                if(buzzBox) { buzzBox.style.opacity = "0.4"; buzzBox.style.pointerEvents = "none"; }
+            const btnManual = document.getElementById('mode-manual');
+            const btnAuto = document.getElementById('mode-auto');
+            const fanBox = document.getElementById('box-fan');
+            const buzzBox = document.getElementById('box-buzz');
+
+            if (currentMode === "TỰ ĐỘNG" || currentMode === "MODE_AUTO") {
+                btnAuto.style.background = "#22c55e";
+                btnAuto.style.color = "white";
+                btnManual.style.background = "#334155";
+                btnManual.style.color = "#94a3b8";
                 
-                console.log("Web đã chuyển sang chế độ: TỰ ĐỘNG");
+                if(fanBox) { fanBox.style.opacity = "0.3"; fanBox.style.pointerEvents = "none"; }
+                if(buzzBox) { buzzBox.style.opacity = "0.3"; buzzBox.style.pointerEvents = "none"; }
             } 
-            else if (data.Mode === "TRỰC TIẾP") {
-                // ĐỔI TRẠNG THÁI SANG TRỰC TIẾP
-                btnManual.style.backgroundColor = "#fbbf24"; // Vàng
+            else if (currentMode === "TRỰC TIẾP" || currentMode === "MODE_MANUAL") {
+                btnManual.style.background = "#fbbf24";
                 btnManual.style.color = "black";
-                btnAuto.style.backgroundColor = "#334155";
+                btnAuto.style.background = "#334155";
                 btnAuto.style.color = "#94a3b8";
 
-                // Mở khóa các nút điều khiển để người dùng có thể bật/tắt tay
                 if(fanBox) { fanBox.style.opacity = "1"; fanBox.style.pointerEvents = "auto"; }
                 if(buzzBox) { buzzBox.style.opacity = "1"; buzzBox.style.pointerEvents = "auto"; }
-                
-                console.log("Web đã chuyển sang chế độ: TRỰC TIẾP");
             }
+        } else {
+            // Nếu gói tin không có Mode, vẫn đẩy N/A để mảng labels và modeHistory khớp nhau
+            modeHistory.push(modeHistory.length > 0 ? modeHistory[modeHistory.length - 1] : "N/A");
         }
         } catch (e) { console.error(e); }
     };
@@ -344,16 +357,18 @@ function exportToCSV() {
 
         // Tạo nội dung CSV (Dùng \uFEFF để Excel không lỗi font tiếng Việt)
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "Thời Gian,Nhiệt Độ (°C),Độ Ẩm (%),Khí Gas(ADC), Trạng thái\n";
+        csvContent += "Thời Gian,Nhiệt Độ (°C),Độ Ẩm (%),Khí Gas(ADC), Trạng thái, Chế độ\n";
 
         // Duyệt qua dữ liệu và nối dòng
         labels.forEach((time, index) => {
+            // Dùng định dạng ="giá trị" để Excel KHÔNG tự ý đổi định dạng gây ra lỗi #######
             let row = [
-                time,
+                `="${time}"`, 
                 tempData[index] || 0,
                 humData[index] || 0,
                 gasData[index] || 0,
-		statusHistory[index] || "N/A"
+                `="${statusHistory[index] || "N/A"}"`,
+                `="${modeHistory[index] || "N/A"}"` // Thêm cột Mode
             ].join(",");
             csvContent += row + "\n";
         });
