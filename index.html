@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát & Điều Khiển</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { 
+            --primary: #00d4ff; --temp: #ff4757; --bg: #0f172a; 
+            --card-bg: #1e293b; --border: #334155; --success: #2ed573;
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); 
+            color: #f8fafc; margin: 0; padding: 20px; 
+        }
+
+        .container { max-width: 1400px; margin: auto; }
+
+        .main-header {
+            text-align: center; margin-bottom: 25px; padding: 15px;
+            background: linear-gradient(90deg, transparent, var(--card-bg), transparent);
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* Layout chính: Chia 2 cột (Trái: Đồ thị, Phải: Điều khiển) */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr; /* Tỷ lệ cột 2:1 */
+            gap: 25px;
+        }
+
+        /* Khu vực bên trái: 2 Biểu đồ */
+        .charts-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chart-container { 
+            background: var(--card-bg); padding: 15px; border-radius: 15px; 
+            border: 1px solid var(--border); height: 280px; 
+        }
+
+        /* Khu vực bên phải: Status + Điều khiển */
+        .control-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stat-card { 
+            background: var(--card-bg); padding: 20px; border-radius: 15px; 
+            border: 1px solid var(--border); text-align: center;
+        }
+
+        #main-status { 
+            padding: 15px; border-radius: 12px; font-weight: 800;
+            border: 2px solid var(--border); margin-bottom: 10px;
+        }
+
+        .btn-group {
+            display: flex; flex-direction: column; gap: 15px; margin-top: 15px;
+        }
+
+        button {
+            padding: 15px; border: none; border-radius: 8px; font-weight: bold;
+            cursor: pointer; transition: 0.3s; color: white; font-size: 1rem;
+        }
+
+        .btn-on { background: var(--success); box-shadow: 0 4px 10px rgba(46, 213, 115, 0.2); }
+        .btn-off { background: var(--temp); box-shadow: 0 4px 10px rgba(255, 71, 87, 0.2); }
+        button:hover { opacity: 0.8; transform: translateY(-2px); }
+
+        .mini-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; border-bottom: 1px solid #334155;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="main-header">
+        <h1>PTIT TECHNOLOGY VIETNAM</h1>
+        <p>Giám sát & Điều khiển Thiết bị Real-time</p>
+    </header>
+
+    <div class="main-layout">
+        <div class="charts-column">
+            <div class="chart-container"><canvas id="chart-temp"></canvas></div>
+    <div class="chart-container"><canvas id="chart-hum"></canvas></div>
+            <div class="chart-container"><canvas id="chart-gas"></canvas></div>
+        </div>
+
+    <div class="control-column">
+        <div id="clock-wrapper" style="background: var(--card-bg); padding: 15px 20px; border-radius: 15px; border: 1px solid var(--border); text-align: center; margin-bottom: 0px; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 28px; height: 28px; background: #334155; border-radius: 50%; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #475569;">
+            <div style="width: 22px; height: 22px; background: #94a3b8; border-radius: 50%; position: relative;">
+            <div style="position: absolute; width: 2px; height: 7px; background: #ef4444; top: 4px; left: 10px;"></div>
+            <div style="position: absolute; width: 6px; height: 2px; background: #1e293b; top: 10px; left: 10px;"></div>
+        </div>
+    </div>
+        <div style="color: #34d399;
+    		font-size: 1.4rem;
+   		    border-radius: 12px; 
+    		font-weight: 800; 
+    		text-align: center;
+   		    text-transform: uppercase;
+    		letter-spacing: 1px;">
+            THỜI GIAN: <span id="digital-clock">00:00:00</span>
+        </div>
+    </div>
+
+    <div class="stat-card" style="margin-top: 5px;">
+        <div class="mini-stat">
+            <span>Nhiệt độ:</span>
+            <b id="val-temp" style="color: var(--temp); font-size: 1.5rem;">--°C</b>
+        </div>
+	    <div class="mini-stat">
+            <span>Độ ẩm:</span>
+            <b id="val-hum" style="color: #2ed573; font-size: 1.5rem;">--%</b>
+        </div>
+        <div class="mini-stat">
+            <span>Khí Gas:</span>
+            <b id="val-gas" style="color: var(--primary); font-size: 1.5rem;">--</b>
+        </div>
+    </div>
+
+    <script>
+        function runClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('digital-clock').innerText = `${h}:${m}:${s}`;
+        }
+        setInterval(runClock, 1000);
+        runClock();
+    </script>
+
+    <div id="main-status">ĐANG KẾT NỐI...</div>
+    <div class="stat-card" style="background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; text-align: center;">
+    <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 15px; font-weight: bold;">CHẾ ĐỘ HỆ THỐNG ĐIỀU KHIỂN</div>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button id="mode-manual" 
+            style="flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; background: #334155; color: #94a3b8; border: 1px solid #475569;"
+            onclick="this.style.background='#22c55e'; this.style.color='white'; document.getElementById('mode-auto').style.background='#334155'; document.getElementById('mode-auto').style.color='#94a3b8'; document.getElementById('box-fan').style.opacity='1'; document.getElementById('box-fan').style.pointerEvents='auto'; document.getElementById('box-buzz').style.opacity='1'; document.getElementById('box-buzz').style.pointerEvents='auto'; sendControl('MODE_MANUAL');">
+            TRỰC TIẾP
+        </button>
+        
+        <button id="mode-auto" 
+            style="flex: 1; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; background: #22c55e; color: white; border: 1px solid #4ade80;"
+            onclick="this.style.background='#22c55e'; this.style.color='white'; document.getElementById('mode-manual').style.background='#334155'; document.getElementById('mode-manual').style.color='#94a3b8'; document.getElementById('box-fan').style.opacity='0.3'; document.getElementById('box-fan').style.pointerEvents='none'; document.getElementById('box-buzz').style.opacity='0.3'; document.getElementById('box-buzz').style.pointerEvents='none'; sendControl('MODE_AUTO');">
+            TỰ ĐỘNG
+        </button>
+    </div>
+
+    <div id="box-fan" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; opacity: 0.3; pointer-events: none; transition: 0.3s;">
+    <span style="font-size: 0.9rem; font-weight: bold;">ĐIỀU KHIỂN QUẠT:</span>
+    <div style="display: flex; gap: 8px;">
+        <button id="fan-on" onclick="sendControl('FAN_ON')" 
+            style="background: #0ea5e9; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; width: 70px;">ON</button>
+        
+        <button id="fan-off" onclick="sendControl('FAN_OFF')" 
+            style="background: #f59e0b; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; width: 70px;">OFF</button>
+    </div>
+</div>
+
+<div id="box-buzz" style="display: flex; align-items: center; justify-content: space-between; opacity: 0.3; pointer-events: none; transition: 0.3s;">
+    <span style="font-size: 0.9rem; font-weight: bold;">ĐIỀU KHIỂN CÒI:</span>
+    <div style="display: flex; gap: 8px;">
+        <button id="buzz-on" onclick="sendControl('BUZZ_ON')" 
+            style="background: #0ea5e9; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; width: 70px;">ON</button>
+        
+        <button id="buzz-off" onclick="sendControl('BUZZ_OFF')" 
+            style="background: #f59e0b; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; width: 70px;">OFF</button>
+    </div>
+</div>
+
+<div class="export-panel" style="background: var(--card-bg); padding: 15px; border-radius: 15px; border: 1px solid var(--border); margin-top: 20px;">
+    <h1 style="text-align: center; color: #10b981; margin-bottom: 10px; font-size: 1.1rem;">
+        <i class="fas fa-file-csv"></i> QUẢN LÝ DỮ LIỆU
+    </h1>
+        </p>
+            <button onclick="exportToCSV()" 
+                style="background: #10b981; color: white; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;">
+                <span>📥 TẢI XUỐNG BẢN GHI (CSV)</span>
+            </button>
+            </div>        
+        </div>
+    </div>
+</div>
+
+<script>
+    const CONFIG = {
+        host: "01f894dd824d42edbbf438ed8969d5b1.s1.eu.hivemq.cloud",
+        port: 8884,
+        user: "MQTT_EE",
+        pass: "Kernel1234",
+        topic: "Sensor",
+        ctrlTopic: "Control"
+    };
+
+    let statusHistory = [];
+    const client = new Paho.MQTT.Client(CONFIG.host, Number(CONFIG.port), "Web_Client_" + Math.random().toString(16).substr(2, 4));
+
+    function sendControl(command) {
+        if (client.isConnected()) {
+            const message = new Paho.MQTT.Message(command);
+            message.destinationName = CONFIG.ctrlTopic;
+            client.send(message);
+            console.log("Sent: " + command);
+        } else {
+            alert("Mất kết nối MQTT!");
+        }
+    }
+
+    function createChart(id, label, color, min, max) {
+        return new Chart(document.getElementById(id), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: label,
+                    data: [],
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: label, color: '#ffffff', font: { size: 16} }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { min: min, max: max, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+    }
+
+    const charts = {
+        temp: createChart('chart-temp', 'Biểu đồ giá trị Nhiệt độ (°C)', '#ff4757', 0, 50),
+	    hum: createChart('chart-hum', 'Biểu đồ giá trị Độ ẩm (%)', '#2ed573', 0, 100),
+        gas: createChart('chart-gas', 'Biểu đồ giá trị Khí Gas (ADC)', '#00d4ff', 0, 4095)
+    };
+
+    function updateUI(chart, time, value) {
+        if (chart.data.labels.length > 20) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+        chart.data.labels.push(time);
+        chart.data.datasets[0].data.push(value);
+        chart.update('none');
+    }
+
+    client.onMessageArrived = (msg) => {
+        try {
+            const data = JSON.parse(msg.payloadString);
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            if(data["Nhiet do"] !== undefined) {
+                document.getElementById('val-temp').innerText = data["Nhiet do"] + "°C";
+                updateUI(charts.temp, time, data["Nhiet do"]);
+            }
+	        if(data["Do am"] !== undefined) { // Thay "Do am" bằng key thực tế từ thiết bị của bạn
+               document.getElementById('val-hum').innerText = data["Do am"] + "%";
+               updateUI(charts.hum, time, data["Do am"]);
+            }
+            if(data["GAS"] !== undefined) {
+                document.getElementById('val-gas').innerText = data["GAS"];
+                updateUI(charts.gas, time, data["GAS"]);
+            }
+
+            const statusBox = document.getElementById('main-status');
+            if (data.Mode !== undefined) {
+            if (data.Mode === "TỰ ĐỘNG") {
+                // ĐỔI TRẠNG THÁI SANG TỰ ĐỘNG
+                // Cập nhật màu sắc nút bấm
+                btnAuto.style.backgroundColor = "#22c55e"; // Xanh lá
+                btnAuto.style.color = "white";
+                btnManual.style.backgroundColor = "#334155"; // Màu tối (off)
+                btnManual.style.color = "#94a3b8";
+
+                // Khóa khả năng bấm các nút điều khiển trực tiếp (vì đang chạy tự động)
+                if(fanBox) { fanBox.style.opacity = "0.4"; fanBox.style.pointerEvents = "none"; }
+                if(buzzBox) { buzzBox.style.opacity = "0.4"; buzzBox.style.pointerEvents = "none"; }
+                
+                console.log("Web đã chuyển sang chế độ: TỰ ĐỘNG");
+            } 
+            else if (data.Mode === "TRỰC TIẾP") {
+                // ĐỔI TRẠNG THÁI SANG TRỰC TIẾP
+                btnManual.style.backgroundColor = "#fbbf24"; // Vàng
+                btnManual.style.color = "black";
+                btnAuto.style.backgroundColor = "#334155";
+                btnAuto.style.color = "#94a3b8";
+
+                // Mở khóa các nút điều khiển để người dùng có thể bật/tắt tay
+                if(fanBox) { fanBox.style.opacity = "1"; fanBox.style.pointerEvents = "auto"; }
+                if(buzzBox) { buzzBox.style.opacity = "1"; buzzBox.style.pointerEvents = "auto"; }
+                
+                console.log("Web đã chuyển sang chế độ: TRỰC TIẾP");
+            }
+        }
+        } catch (e) { console.error(e); }
+    };
+
+    client.connect({
+        userName: CONFIG.user, password: CONFIG.pass, useSSL: true,
+        onSuccess: () => {
+            document.getElementById('main-status').innerText = "TRẠNG THÁI HỆ THỐNG: ĐÃ KẾT NỐI";
+            document.getElementById('main-status').style.color = "#34d399";
+            client.subscribe(CONFIG.topic);
+        }
+    });
+    // --- HÀM XUẤT CSV ---
+function exportToCSV() {
+    try {
+        // Trích xuất dữ liệu từ các đối tượng Chart.js
+        const labels = charts.temp.data.labels;
+        const tempData = charts.temp.data.datasets[0].data;
+        const humData = charts.hum.data.datasets[0].data;
+        const gasData = charts.gas.data.datasets[0].data;
+
+        if (labels.length === 0) {
+            alert("Chưa có dữ liệu để xuất!");
+            return;
+        }
+
+        // Tạo nội dung CSV (Dùng \uFEFF để Excel không lỗi font tiếng Việt)
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+        csvContent += "Thời Gian,Nhiệt Độ (°C),Độ Ẩm (%),Khí Gas(ADC), Trạng thái\n";
+
+        // Duyệt qua dữ liệu và nối dòng
+        labels.forEach((time, index) => {
+            let row = [
+                time,
+                tempData[index] || 0,
+                humData[index] || 0,
+                gasData[index] || 0,
+		statusHistory[index] || "N/A"
+            ].join(",");
+            csvContent += row + "\n";
+        });
+
+        // Tạo hiệu ứng tải file
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "Nhat_ky_giam_sat_" + new Date().toLocaleDateString() + ".csv");
+        document.body.appendChild(link);
+        
+        link.click();
+        document.body.removeChild(link);
+    } catch (err) {
+        console.error("Lỗi xuất CSV:", err);
+        alert("Có lỗi xảy ra khi trích xuất dữ liệu!");
+    }
+}
+
+</script>
+</body>
+</html>
