@@ -274,64 +274,69 @@
     }
 
     client.onMessageArrived = (msg) => {
-        try {
-            const data = JSON.parse(msg.payloadString);
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    try {
+        const data = JSON.parse(msg.payloadString);
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            if(data["Nhiet do"] !== undefined) {
-                document.getElementById('val-temp').innerText = data["Nhiet do"] + "°C";
-                updateUI(charts.temp, time, data["Nhiet do"]);
-            }
-	    if(data["Do am"] !== undefined) { // Thay "Do am" bằng key thực tế từ thiết bị của bạn
-               document.getElementById('val-hum').innerText = data["Do am"] + "%";
-               updateUI(charts.hum, time, data["Do am"]);
-            }
-            if(data["GAS"] !== undefined) {
-                document.getElementById('val-gas').innerText = data["GAS"];
-                updateUI(charts.gas, time, data["GAS"]);
-            }
-
-            const statusBox = document.getElementById('main-status');
-            if(data["State"]) {
-                statusBox.innerText = "TRẠNG THÁI HỆ THỐNG:  " + data["State"];
-		        statusHistory.push(data["State"]);
-                const isSafe = (data["State"] === "SAFE" || data["State"] === "AN TOÀN");
-                statusBox.style.borderColor = isSafe ? "#34d399" : "#f87171";
-                statusBox.style.color = isSafe ? "#34d399" : "#f87171";
-            }
-            if(data["Mode"] !== undefined) {
-            const currentMode = data["Mode"];
-            modeHistory.push(currentMode); // Lưu vào lịch sử để xuất Excel
-
-            const btnManual = document.getElementById('mode-manual');
-            const btnAuto = document.getElementById('mode-auto');
-            const fanBox = document.getElementById('box-fan');
-            const buzzBox = document.getElementById('box-buzz');
-
-            if (currentMode === "TỰ ĐỘNG" || currentMode === "MODE_AUTO") {
-                btnAuto.style.background = "#22c55e";
-                btnAuto.style.color = "white";
-                btnManual.style.background = "#334155";
-                btnManual.style.color = "#94a3b8";
-                
-                if(fanBox) { fanBox.style.opacity = "0.3"; fanBox.style.pointerEvents = "none"; }
-                if(buzzBox) { buzzBox.style.opacity = "0.3"; buzzBox.style.pointerEvents = "none"; }
-            } 
-            else if (currentMode === "TRỰC TIẾP" || currentMode === "MODE_MANUAL") {
-                btnManual.style.background = "#fbbf24";
-                btnManual.style.color = "black";
-                btnAuto.style.background = "#334155";
-                btnAuto.style.color = "#94a3b8";
-
-                if(fanBox) { fanBox.style.opacity = "1"; fanBox.style.pointerEvents = "auto"; }
-                if(buzzBox) { buzzBox.style.opacity = "1"; buzzBox.style.pointerEvents = "auto"; }
-            }
-        } else {
-            // Nếu gói tin không có Mode, vẫn đẩy N/A để mảng labels và modeHistory khớp nhau
-            modeHistory.push(modeHistory.length > 0 ? modeHistory[modeHistory.length - 1] : "N/A");
+        // 1. CẬP NHẬT CẢM BIẾN & BIỂU ĐỒ
+        let isDataPacket = false;
+        if(data["Nhiet do"] !== undefined) {
+            document.getElementById('val-temp').innerText = data["Nhiet do"] + "°C";
+            updateUI(charts.temp, time, data["Nhiet do"]);
+            isDataPacket = true;
         }
-        } catch (e) { console.error(e); }
-    };
+        if(data["Do am"] !== undefined) {
+            document.getElementById('val-hum').innerText = data["Do am"] + "%";
+            updateUI(charts.hum, time, data["Do am"]);
+            isDataPacket = true;
+        }
+        if(data["GAS"] !== undefined) {
+            document.getElementById('val-gas').innerText = data["GAS"];
+            updateUI(charts.gas, time, data["GAS"]);
+            isDataPacket = true;
+        }
+
+        // Nếu tin nhắn không chứa dữ liệu cảm biến (chỉ là tin nhắn điều khiển), ta không lưu dòng mới vào CSV
+        if(!isDataPacket) return;
+
+        // 2. XỬ LÝ TRẠNG THÁI (STATE)
+        const statusBox = document.getElementById('main-status');
+        if(data["State"]) {
+            statusBox.innerText = "TRẠNG THÁI HỆ THỐNG: " + data["State"];
+            statusHistory.push(data["State"]);
+            const isSafe = (data["State"] === "SAFE" || data["State"] === "AN TOÀN");
+            statusBox.style.borderColor = isSafe ? "#34d399" : "#f87171";
+            statusBox.style.color = isSafe ? "#34d399" : "#f87171";
+        } else {
+            // Giữ nguyên trạng thái cũ nếu gói tin này không gửi State
+            statusHistory.push(statusHistory.length > 0 ? statusHistory[statusHistory.length - 1] : "N/A");
+        }
+
+        // 3. XỬ LÝ CHẾ ĐỘ (MODE)
+        const btnManual = document.getElementById('mode-manual');
+        const btnAuto = document.getElementById('mode-auto');
+        const fanBox = document.getElementById('box-fan');
+        const buzzBox = document.getElementById('box-buzz');
+
+        // Lấy mode từ tin nhắn, nếu không có thì lấy mode gần nhất đã lưu
+        const currentMode = data["Mode"] || (modeHistory.length > 0 ? modeHistory[modeHistory.length - 1] : "N/A");
+        modeHistory.push(currentMode);
+
+        // Cập nhật màu sắc nút bấm dựa trên Mode thực tế
+        if (mode === 'MODE_AUTO') {
+        btnAuto.style.background = "#22c55e"; btnAuto.style.color = "white";
+        btnManual.style.background = "#334155"; btnManual.style.color = "#94a3b8";
+        if(fanBox) { fanBox.style.opacity = "0.3"; fanBox.style.pointerEvents = "none"; }
+        if(buzzBox) { buzzBox.style.opacity = "0.3"; buzzBox.style.pointerEvents = "none"; }
+    } else {
+        btnManual.style.background = "#22c55e"; btnManual.style.color = "white"; // Chuyển sang xanh khi chọn
+        btnAuto.style.background = "#334155"; btnAuto.style.color = "#94a3b8";
+        if(fanBox) { fanBox.style.opacity = "1"; fanBox.style.pointerEvents = "auto"; }
+        if(buzzBox) { buzzBox.style.opacity = "1"; buzzBox.style.pointerEvents = "auto"; }
+    }
+
+    } catch (e) { console.error("Lỗi xử lý tin nhắn:", e); }
+};
 
     client.connect({
         userName: CONFIG.user, password: CONFIG.pass, useSSL: true,
